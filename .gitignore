@@ -1,0 +1,8 @@
+env
+PPU.conf
+__pycache__
+outputs
+*.log
+*.db
+dev
+raw
