@@ -6,3 +6,6 @@ outputs
 *.db
 dev
 raw
+*.json
+http_auth_credentials.py
+log_outputs

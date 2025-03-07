@@ -109,7 +109,7 @@ def make_ordered_text(ordered_arr):
     return out_text+'\n\n'
 
 # Summary 1 message
-#   {"allStats":[{"uniqueId":"76561199176267456","productId":"XXXXXXXXXX","playerName":"Pasta-******","teamId":0,"stats":[{"statType":"Death","amount":1}]}],"MapLabel":"UGC2849391","GameMode":"PUSH","PlayerCount":2,"bTeams":true,"Team0Score":1,"Team1Score":1}
+#   {"allStats":[{"uniqueId":"76561199176267456","productId":"0002c72eb6d34f00bd491f2953bb738b","playerName":"Pasta-******","teamId":0,"stats":[{"statType":"Death","amount":1}]}],"MapLabel":"UGC2849391","GameMode":"PUSH","PlayerCount":2,"bTeams":true,"Team0Score":1,"Team1Score":1}
 
 # dict elements that hold match data including map, score, players, player k-d-exp
 def process_summary_1(full_text):
