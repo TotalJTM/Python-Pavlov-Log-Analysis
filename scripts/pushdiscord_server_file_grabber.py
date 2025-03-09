@@ -1,10 +1,8 @@
 # import requests module highpush_pavlov_db_file
-import requests 
-from requests.auth import HTTPBasicAuth
+import requests
 from bs4 import BeautifulSoup
 import os
-import pavlov_server_db_manager as psdb
-import pavlov_server_log_parser as pslp
+from pav_la import pavlov_server_db_manager as psdb, pavlov_server_log_parser as pslp
 import http_auth_credentials as credentials
 
 # path to log directory: ex. r'http://ser.ver.add.ress:port/Logs'

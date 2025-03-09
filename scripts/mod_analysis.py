@@ -1,8 +1,15 @@
-from pavlovpdater import PavlovUpdater
+from pav_la.pavlovpdater import PavlovUpdater
 import sqlite3
 import time, datetime
 
 
+def get_entry_from_mod_id(cursor, id):
+    data = cursor.execute(f'''SELECT * FROM stats WHERE mod_id == {id}''')
+    return data
+
+def get_entry_from_date_range(cursor, start_date, end_date):
+    data = cursor.execute(f'''SELECT * FROM stats WHERE entry_timecode >= {start_date.timestamp()} AND entry_timecode <= {end_date.timestamp()}''')
+    return data
 
 def extract_stats_from_mods(modlist):
 	stats_list = []
@@ -12,24 +19,24 @@ def extract_stats_from_mods(modlist):
 	return stats_list
 
 
-# def create_stats_database(cursor):
-# 	# {'mod_id': 2771448, 'popularity_rank_position': 169, 'popularity_rank_total_mods': 2268, 'downloads_today': 72, 'downloads_total': 35303, 'subscribers_total': 414, 'ratings_total': 24, 'ratings_positive': 16, 
-# # 'ratings_negative': 8, 'ratings_percentage_positive': 67, 'ratings_weighted_aggregate': 0.47, 'ratings_display_text': 'Mixed', 'date_expires': 1701097294}
-# 	table = """CREATE TABLE stats (\
-# mod_id INTEGER NOT NULL, \
-# popularity_rank_position INTEGER, \
-# popularity_rank_total_mods INTEGER, \
-# downloads_total INTEGER, \
-# subscribers_total INTEGER, \
-# ratings_total INTEGER, \
-# ratings_positive INTEGER, \
-# ratings_negative INTEGER, \
-# ratings_weighted_aggregate REAL, \
-# date_expires INTEGER, \
-# entry_timecode INTEGER\
-# );"""
-# 	cursor.execute(table)
-# 	logger.info(f' Made the table '.center(center_dist,'='))
+def create_stats_database(cursor):
+	# {'mod_id': 2771448, 'popularity_rank_position': 169, 'popularity_rank_total_mods': 2268, 'downloads_today': 72, 'downloads_total': 35303, 'subscribers_total': 414, 'ratings_total': 24, 'ratings_positive': 16, 
+# 'ratings_negative': 8, 'ratings_percentage_positive': 67, 'ratings_weighted_aggregate': 0.47, 'ratings_display_text': 'Mixed', 'date_expires': 1701097294}
+	table = """CREATE TABLE stats (\
+mod_id INTEGER NOT NULL, \
+popularity_rank_position INTEGER, \
+popularity_rank_total_mods INTEGER, \
+downloads_total INTEGER, \
+subscribers_total INTEGER, \
+ratings_total INTEGER, \
+ratings_positive INTEGER, \
+ratings_negative INTEGER, \
+ratings_weighted_aggregate REAL, \
+date_expires INTEGER, \
+entry_timecode INTEGER\
+);"""
+	cursor.execute(table)
+	logger.info(f' Made the table '.center(center_dist,'='))
 
 def add_mod_to_database(cursor, mod):
 	entry_keys = (
@@ -63,14 +70,12 @@ def add_mod_to_database(cursor, mod):
 
 
 
-
-
 center_dist = 100
 if __name__ == "__main__":
 	import logging
 	import sys
 
-	logging.basicConfig(filename="update_mod_db.log",
+	logging.basicConfig(filename="mod_analysis.log",
 						format='%(asctime)s %(message)s',
 						filemode='w+')
 	logger = logging.getLogger()
@@ -82,7 +87,7 @@ if __name__ == "__main__":
 	logger.info(f'Mod analysis')
 
 	# use the configuration manager to load configuration variables from the .conf file
-	import settings_manager
+	from pav_la import settings_manager
 
 	conf_dict = None
 	cm = settings_manager.Conf_Manager('PPU.conf', logger)
@@ -91,15 +96,15 @@ if __name__ == "__main__":
 	# create pavlov updater object
 	pu = PavlovUpdater(pavlov_mod_dir_path=conf_dict['pavlov_mod_dir_path'], modio_api_token=conf_dict['modio_api_token'], logging_obj=logger)
 
-	full_modlist = pu.get_pavlov_modlist()
+	# full_modlist = pu.get_pavlov_modlist()
 	logger.info(f' Got full modlist '.center(center_dist,'='))
 	# logger.info(full_modlist)
 
 	# sub_modlist = pu.get_subscribed_modlist()
-	# logger.info(f' Got subbed modlist '.center(center_dist,'='))
+	logger.info(f' Got subbed modlist '.center(center_dist,'='))
 	# logger.info(sub_modlist)
 
-	all_mod_stats = extract_stats_from_mods(full_modlist)
+	# all_mod_stats = extract_stats_from_mods(full_modlist)
 	logger.info(f' All mod stats isolated '.center(center_dist,'='))
 	# logger.info(all_mod_stats)
 
@@ -113,11 +118,23 @@ if __name__ == "__main__":
 	#########################
 
 	#### make entries ####
-	for mod in all_mod_stats:
-		add_mod_to_database(cursor, mod)
+	# for mod in all_mod_stats:
+	# 	add_mod_to_database(cursor, mod)
 	#########################
 
-	connection.commit()
-	logger.info(f' Committed to table '.center(center_dist,'='))
+	# logger.info(f' Added new stats to table '.center(center_dist,'='))
 
-	logger.info(f' Done updating database '.center(center_dist,'='))
+	# connection.commit()
+	# logger.info(f' Committed to table '.center(center_dist,'='))
+
+	# data = cursor.execute('''SELECT * FROM stats''') # get all stats
+
+	data = get_entry_from_date_range(cursor, datetime.datetime(2023,11,1), datetime.datetime(2023,11,30))
+	logger.info(f' Printing back contents '.center(center_dist,'='))
+	for row in data:
+		logger.info(row)
+
+
+
+
+	# logger.info(f' ___ '.center(center_dist,'='))

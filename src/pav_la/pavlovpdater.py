@@ -1,8 +1,4 @@
-import json
 import os
-import tempfile
-import zipfile
-import hashlib
 
 import requests
 
@@ -256,7 +252,7 @@ if __name__ == "__main__":
 	logger.info(f'PyPavlovUpdater Version {major_vers}.{minor_vers}\n')
 
 	# use the configuration manager to load configuration variables from the .conf file
-	import settings_manager
+	from pav_la import settings_manager
 
 	conf_dict = None
 	cm = settings_manager.Conf_Manager('PPU.conf', logger)
