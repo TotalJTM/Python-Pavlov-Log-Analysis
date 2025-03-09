@@ -168,7 +168,7 @@ if __name__ == "__main__":
 				mapname = mapname['name']
 
 			str_accum = "\n"
-			str_accum += f"Match {match_num} : Played at {decode_epoch_to_UTC(server_map['entry_timecode'])} : Map {mapname} : {int(server_map['duration']/60.0)} minutes\n"
+			str_accum += f"Match {match_num+1} : Played at {decode_epoch_to_UTC(server_map['entry_timecode'])} : Map {mapname} : {int(server_map['duration']/60.0)} minutes\n"
 			str_accum += f"Blue Team (0): {team0_exp} exp with {team0_players} players | Red Team (1): {team1_exp} exp with {team1_players} players\n"
 			str_accum += f"{'Player Name':45} | {'Exp':5} | {'K/D/A':13} | Team\n"
 			# print(server_map['player_list'])
@@ -1075,12 +1075,12 @@ if __name__ == "__main__":
 	def record_match_statistics(match_stat_arr):
 		str_accum = "\n"
 		str_accum += f"Match Statistic Summary Raw\n"
-		str_accum += f"{'Timestamp':12} | {'Logins':6} | {'Min':3}, {'Avg':4}, {'Max':3} | {'Duration (mins)':5} | {'Map Name':45}\n"
+		str_accum += f"{'#':3} | {'Timestamp':12} | {'Logins':6} | {'Min':3}, {'Avg':4}, {'Max':3} | {'Duration (mins)':5} | {'Map Name':45}\n"
 
 		for i, stat in enumerate(match_stat_arr):
 			round_dur = round(stat['duration']/60,1)
 			round_dur = round_dur if round_dur <= 200.0 else '  N/A '
-			str_accum += f"{int(stat['start']):12} | {int(stat['logins']):6} | {int(stat['min']):3}, {round(stat['avg'],1):4}, {int(stat['max']):3} | {round_dur:5} | {stat['map_name']:45}\n"
+			str_accum += f"{i+1:3} | {int(stat['start']):12} | {int(stat['logins']):6} | {int(stat['min']):3}, {round(stat['avg'],1):4}, {int(stat['max']):3} | {round_dur:5} | {stat['map_name']:45}\n"
 
 		logger.info(str_accum)
 
@@ -1211,7 +1211,237 @@ if __name__ == "__main__":
 		plot_stats('Average Gain Comparison', f'{file_dir_path}/average_gain_scatter', 'avg_gain')
 		plot_stats('Logins Gain Comparison', f'{file_dir_path}/login_gain_scatter', 'login_gain')
 					
+	# generate a leaderboard of players during the 3/8/25 Push discord event
+	def generate_competitive_leaderboard_3_8_25(kill_df, stats_df, roundstate_df, map_df, mapdict):
+		special_weapon_weights = {
+			'grenade_ger':2,
+			'grenade_us':2,
+			'Grenade':2,
+			'fraggrenade_svt':2,
+			'fraggrenade_ger':2,
+			'grenade_svt':2,
+			'Knife':4,
+			'ww2knife':4,
+			'bayonet_held':4,
+			'bayonet_charge':4,
+		}
+
+		number_matches_to_consider = 3
+
+		event_player_ids = {
+			76561198040665846:{'name': 'Ushanka'},
+			76561199079428245:{'name': 'Keyboardperson'},
+			76561198066299492:{'name': 'TotalJTM'},
+			76561198142540651:{'name': 'ConConCotter'},
+			76561198445634612:{'name': 'Wabungus'},
+			76561198133756203:{'name': 'Hammurabi'},
+			76561198101042388:{'name': 'Wrestlerninja'},
+			76561197977856199:{'name': 'gnabiator'},
+			76561198017751181:{'name': 'Miltaneix'},
+			76561197971431908:{'name': 'ScarletWahoo'},
+			76561198018892304:{'name': 'Donny Demon'},
+			76561199059360770:{'name': 'LEUGIM/SCUDIZZL'},
+			76561198123954890:{'name': 'Kiritowerty/Youre Next'},
+			76561198452363499:{'name': 'k.yle'},
+			76561198063848274:{'name': 'data2hd'},
+			76561197981053744:{'name': 'VRAVE HARD'},
+			76561199274363687:{'name': 'Killacamcam727'},
+			76561198866778629:{'name': 'Rumrobot'},
+			76561198806722099:{'name': 'Hiroxcz'},
+		}
+		
+		##### step 1: get list of maps and times #####
+		match_start_stop_times = get_map_start_stop_timestamps(roundstate_df, map_df)
+
+		##### step 2: make dict of player data and match data #####
+		accum_match_data = []
+		for ind, match in enumerate(match_start_stop_times[1:]):
+			## get data subset from data tables
+			player_data_subset = kill_df[(kill_df['entry_timecode'] >= match['start']) & (kill_df['entry_timecode'] <= match['end'])].reset_index()
+			stat_data_subset = stats_df[(stats_df['entry_timecode'] >= match['start']) & (stats_df['entry_timecode'] <= match['end'])].reset_index()
+			player_ids = list(set(list(player_data_subset.copy()['killer_id'].unique()) + list(player_data_subset.copy()['killed_id'].unique())))
+
+			## put together initial match dict for populating in next part
+			curr_match = {
+				'map': int(match['map_id']),
+				'start': float(match['start']),
+				'stop': float(match['end']),
+				'match_number': ind+1,
+				'player_data':[]
+			}
 			
+			## iterate through players in this match
+			team_0_score = 0
+			team_0_players = 0
+			team_1_score = 0
+			team_1_players = 0
+			for playerid in player_ids:
+				player_dict = {
+					'steam_id': int(playerid)
+				}
+
+				## get data from dataframes
+				player_stat_entry = stat_data_subset[(stat_data_subset['steam_id'] == playerid)].reset_index(drop=True)
+				player_kills = player_data_subset[(player_data_subset['killer_id'] == playerid) & (player_data_subset['killed_id'] != playerid)].reset_index(drop=True)
+				player_deaths = player_data_subset[(player_data_subset['killer_id'] != playerid) & (player_data_subset['killed_id'] == playerid)].reset_index(drop=True)
+				player_suicides = player_data_subset[(player_data_subset['killer_id'] == playerid) & (player_data_subset['killed_id'] == playerid)].reset_index(drop=True)
+				player_teamkills = player_kills[(player_kills['killer_teamid'] == player_kills['killed_teamid'])].reset_index(drop=True)
+				player_teamkills = player_teamkills[(player_teamkills['killed_by'] != 'OutOfBounds')].reset_index(drop=True)
+				player_assists = 0 if len(player_stat_entry) == 0 else player_stat_entry['assist_count'].values[0]
+				player_stat_score = 0 if len(player_stat_entry) == 0 else player_stat_entry['experience_count'].values[0]
+				player_stat_team = 0 if len(player_stat_entry) == 0 else player_stat_entry['team_id'].values[0]
+
+				## score is calculated as : kill += 2, assist += 1, death += 0, teamkill/suicide (not out of bounds) += -4
+				kills = (len(player_kills)-len(player_teamkills))
+				calced_score = ((kills if kills > 0 else 0)*2) + player_assists + (len(player_teamkills)*-4)
+
+				## get weapon kills from special_weapon_weights dict
+				weapon_score = 0
+				accum_weapon_kills = {}
+				for weapon in special_weapon_weights:
+					weapon_kills = player_kills[(player_kills['killed_by'] == weapon) & (player_kills['killer_teamid'] != player_kills['killed_teamid'])].reset_index()
+					accum_weapon_kills[weapon] = len(weapon_kills)
+					weapon_score += len(weapon_kills) * special_weapon_weights[weapon]
+				
+				## record data in player dict
+				player_dict['kills'] = int(kills)
+				player_dict['deaths'] = int(len(player_deaths))
+				player_dict['assists'] = int(player_assists)
+				player_dict['teamkills'] = int(len(player_teamkills))
+				player_dict['suicides'] = int(len(player_suicides))
+				player_dict['calced_score'] = int(calced_score)
+				player_dict['stat_score'] = int(player_stat_score)
+				player_dict['addtl_score'] = int(calced_score + weapon_score)
+				player_dict['team'] = int(player_stat_team)
+				player_dict['special_weapon_kills'] = accum_weapon_kills
+				curr_match['player_data'].append(player_dict)
+
+				## accum team data
+				if player_stat_team == 0:
+					team_0_score += calced_score
+					team_0_players += 1
+				else:
+					team_1_score += calced_score
+					team_1_players += 1
+
+			## determine how much weight should be applied to the match, should scale between 0.5 and 1.5
+			match_balance = (team_0_score/(team_0_score+team_1_score))+0.5 if (team_0_score+team_1_score) > 0 else 1.0
+			## determine a 0-1 weight that can be multiplied with each score to reduce score imbalances when team scores are too varied
+			match_weight = 1 - (abs(match_balance-1)*2)
+
+			## record team score data
+			curr_match['team_0_score'] = int(team_0_score)
+			curr_match['team_1_score'] = int(team_1_score)
+			curr_match['team_0_players'] = int(team_0_players)
+			curr_match['team_1_players'] = int(team_1_players)
+			curr_match['match_balance'] = float(match_balance)
+			curr_match['match_weight'] = float(match_weight)
+
+			## add match to accumulated list
+			accum_match_data.append(curr_match)
+
+		# logger.info(accum_match_data)
+
+
+		##### step 3: seperate player data into best matches, record results #####
+		## update event_player_ids dict with new match score key to hold match data
+		event_player_score_data = dict(event_player_ids)
+		for player in event_player_score_data:
+			event_player_score_data[player]['match_scores'] = []
+			event_player_score_data[player]['best_scores'] = []
+
+		## go through each match and make a new dataset with only participants
+		event_player_match_data = []
+		for match_data_orig in accum_match_data:
+			match_data = match_data_orig.copy()
+			new_player_data = []
+			## iter through players and save data to new array and event_player_score_data
+			for player_data in match_data['player_data']:
+				if player_data['steam_id'] in event_player_score_data:
+					new_player_data.append(player_data)
+					event_player_score_data[player_data['steam_id']]['match_scores'].append({
+						'match':match_data['match_number'], 
+						'raw_score':player_data['calced_score'], 
+						'addtl_score':player_data['addtl_score'], 
+						'weight_raw_score':player_data['calced_score']*match_data['match_weight'],
+						'weight_addtl_score':player_data['addtl_score']*match_data['match_weight']
+					})
+			match_data['player_data'] = new_player_data
+			event_player_match_data.append(match_data)
+
+		# logger.info(event_player_match_data)
+		# logger.info(event_player_score_data)
+
+		## get best X scores (according to the score_key that matches the score type we want to use) and determine a calculate score
+		score_key = 'weight_addtl_score'
+		for player in event_player_score_data:
+			temp_storage = event_player_score_data[player]['match_scores'].copy()
+			accum_score = 0
+			for best_of_x in range(0,min(number_matches_to_consider,len(event_player_score_data[player]['match_scores']))):
+				best_score = -999
+				best_score_ind = -999
+				best_score_match = -999
+				for i, match in enumerate(temp_storage):
+					if match[score_key] > best_score:
+						best_score = match[score_key]
+						best_score_ind = i
+						best_score_match = match['match']
+				event_player_score_data[player]['best_scores'].append({'match':best_score_match, 'score':best_score})
+				accum_score += best_score
+				del temp_storage[best_score_ind]
+			
+			event_player_score_data[player]['total_score'] = accum_score
+				
+		logger.info(event_player_score_data)
+
+
+		## sort cumulative scores from highest to lowest
+		event_player_sorted_ids = []
+		event_player_sorted_names = []
+		event_player_sorted_data = []
+		event_player_sorted_score = []
+		for leaderboard_ind in range(0, len(event_player_score_data)):
+			top_score = -999
+			top_score_ind = -999
+			best_scores = None
+			player_name = ""
+			player_id = -999
+			for i, player in enumerate(event_player_score_data):
+				if player not in event_player_sorted_ids:
+					if event_player_score_data[player]['total_score'] > top_score:
+						top_score = event_player_score_data[player]['total_score']
+						top_score_ind = i
+						best_scores = event_player_score_data[player]['best_scores']
+						player_name = event_player_score_data[player]['name']
+						player_id = player
+	
+			event_player_sorted_ids.append(player_id)
+			event_player_sorted_data.append(best_scores)
+			event_player_sorted_score.append(top_score)
+			event_player_sorted_names.append(player_name)
+		
+		## record player data into logfile
+		log_str = "\nEvent Leaderboard:\n"
+		log_str += f"{'Num':3} | {'Name':30} | {'Score':7} | {'#1 Match: Score':15} | {'#2 Match: Score':15} | {'#3 Match: Score':15}\n"
+		for leaderboard_ind in range(0,len(event_player_sorted_ids)):
+			lb_scores = event_player_sorted_data[leaderboard_ind]
+			log_str += f"{leaderboard_ind+1:3} | {event_player_sorted_names[leaderboard_ind]:30} | {round(event_player_sorted_score[leaderboard_ind],1):<7} "
+			lb_score_len = len(lb_scores)
+			for i in range(0,lb_score_len):
+				log_str += f"| {lb_scores[i]['match']:>5} : {round(lb_scores[i]['score'],1):<8}"
+			for i in range(0,number_matches_to_consider-lb_score_len):
+				log_str += f"| {0:>5} : {round(0,1):<8}"
+			log_str += "\n"
+
+		logger.info(log_str)
+
+
+
+
+
+
+
+
 	#####################################################################################################
 	##################               Get table data and perform analysis               ##################
 	#####################################################################################################
@@ -1267,7 +1497,7 @@ if __name__ == "__main__":
 		player_totals = make_player_stats_summary(stats_table_data)
 		record_player_totals_unweighted(player_totals.copy())
 		logger.info(f"================================================================================================================")
-		record_player_totals_weighted(player_totals.copy())
+		record_player_totals_weighted(player_totals.copy(), min_games=3)
 		logger.info(f"================================================================================================================")
 
 		elo = calculate_player_elos(map_summary, stats_table_data)
@@ -1281,8 +1511,8 @@ if __name__ == "__main__":
 		record_player_tks(player_totals.copy(), 100)
 		logger.info(f"================================================================================================================")
 
-		record_player_totals_unweighted(player_totals.copy(), 50)
-		record_player_totals_weighted(player_totals.copy(), 50)
+		record_player_totals_unweighted(player_totals.copy(), 50, min_games=3)
+		record_player_totals_weighted(player_totals.copy(), 50, min_games=3)
 		logger.info(f"================================================================================================================")
 
 
@@ -1307,7 +1537,6 @@ if __name__ == "__main__":
 		record_match_statistics(match_statistics_df)
 		match_analysis_dict = analyze_match_statistics_by_map(match_statistics_df)
 		record_match_analysis(match_analysis_dict)
-		make_match_statistics_plots(match_analysis_dict)
 
 		logger.info(f"================================================================================================================")
 		if single_plots or combined_plots or player_count_plots or combined_player_count_plots:
@@ -1317,8 +1546,9 @@ if __name__ == "__main__":
 			# bubble size changes depending on number of assists
 			# includes times when the server failed to start (low pop + long duration) or when the server was not being actively played (really long duration)
 			# timestamps are UTC Epoch, you can use an Epoch calculator to reference the datetime
-			make_map_KD_scatter_plots(map_summary, mapdict)
-			make_period_KDA_line_plots_with_serverpop(kill_table_data, roundstate_table_data, event_table_data, maps_table_data, server_table_data, mapdict)
+			# make_map_KD_scatter_plots(map_summary, mapdict)
+			# make_period_KDA_line_plots_with_serverpop(kill_table_data, roundstate_table_data, event_table_data, maps_table_data, server_table_data, mapdict)
+			# make_match_statistics_plots(match_analysis_dict)
 
 		else:
 			logger.info("Skipping plot generation")
@@ -1328,6 +1558,12 @@ if __name__ == "__main__":
 		logger.info(f"================================================================================================================")
 		record_player_totals_weighted_no_KDA(player_totals.copy(), 250, min_games=1)
 
+		logger.info(f"================================================================================================================")
+		unique_weapons = kill_table_data.copy()['killed_by'].unique()
+		logger.info(f"Unique weapons across matches:\n{unique_weapons}")
+		logger.info(f"================================================================================================================")
+		generate_competitive_leaderboard_3_8_25(kill_table_data, stats_table_data, roundstate_table_data, maps_table_data, mapdict)
+		logger.info(f"================================================================================================================")
 		
 	except:
 		logger.exception('exception')

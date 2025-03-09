@@ -5,31 +5,23 @@ import time
 from datetime import datetime, timezone
 import os
 import logging
-# import ftfy
-# from regex import Regex
 
 def epoch_timestamp():
 	return int(datetime.now().timestamp())
 
+allowed_chars = ['_','-','[',']','(',')','.','!','?',' ']
 def sanitize_name(name):
-	# step = ftfy.fixes.remove_terminal_escapes(ftfy.fixes.unescape_html(name))
-	# fixed = ftfy.fix_text(step)
-	# step = name.replace('\\xc2', r'\\')
-	# Regex.Replace(name, "[^\x20-\xaf]+", "")
-	# return name
-	# logging.info(f'namefix : {step}, {fixed}')
-	# return fixed
 	name = list(name)
 	i = 0
 	while i < len(name):
 		# Finding the character whose
 		# ASCII value fall under this
 		# range
-		if (ord(name[i]) < ord('A') or
-			ord(name[i]) > ord('Z') and
-			ord(name[i]) < ord('a') or
-			ord(name[i]) > ord('z')):
-				 
+		is_uppercase = (ord(name[i]) >= ord('A')) and (ord(name[i]) <= ord('Z'))
+		is_lowercase = (ord(name[i]) >= ord('a')) and (ord(name[i]) <= ord('z'))
+		is_number = ord(name[i]) >= ord('0') and ord(name[i]) <= ord('9')
+		is_allowed_char = any([name[i] == c for c in allowed_chars])
+		if not(is_uppercase or is_lowercase or is_number or is_allowed_char):
 			# erase function to erase
 			# the character
 			del name[i]
