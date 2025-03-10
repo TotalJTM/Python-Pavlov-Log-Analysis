@@ -2,14 +2,11 @@
 # Script written by TotalJTM 2024
 # Version 2, 3/7/25
 
-import sqlite3
-import time, datetime
-import pavlov_server_db_manager
-import game_list_database_handler
+from pav_la import pavlov_server_db_manager
+from pav_la import game_list_database_handler
 import pandas as pd
 from elommr import EloMMR, Player
 import math
-import json
 import matplotlib.pyplot as plt
 
 

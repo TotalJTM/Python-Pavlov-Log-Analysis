@@ -1,7 +1,6 @@
 # !/usr/bin/python
 
-from pavlov_server_db_manager import Pavlov_Server_Database
-import json
+from pav_la.pavlov_server_db_manager import Pavlov_Server_Database
 import re
 from datetime import datetime, timedelta
 import logging

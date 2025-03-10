@@ -1,5 +1,4 @@
-from pavlovpdater import PavlovUpdater
-import time, datetime
+from pav_la.pavlovpdater import PavlovUpdater
 import json
 
 
@@ -38,7 +37,7 @@ if __name__ == "__main__":
 	logger.info(f'Mod analysis')
 
 	# use the configuration manager to load configuration variables from the .conf file
-	import settings_manager
+	from pav_la import settings_manager
 
 	conf_dict = None
 	cm = settings_manager.Conf_Manager('PPU.conf', logger)

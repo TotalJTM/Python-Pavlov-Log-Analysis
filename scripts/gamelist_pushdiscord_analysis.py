@@ -2,15 +2,9 @@
 # Script written by TotalJTM 2024
 # Version 1, 11/8/24
 
-import sqlite3
-import time, datetime
-import game_list_database_handler
+from pav_la import game_list_database_handler
 import pandas as pd
-import math
-import json
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-
 
 pd.set_option('display.precision', 2)  # Set decimal precision to 2 decimals
 
